@@ -56,7 +56,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_set_hexpand(board, TRUE);
     gtk_window_set_child(GTK_WINDOW(window), board);
 
-    GtkWidget *title_label = gtk_label_new("My Board");
+    GtkWidget *title_label = gtk_label_new("control panel");
     gtk_widget_add_css_class(title_label, "panel-clock");
     gtk_box_append(GTK_BOX(board), title_label);
 
@@ -76,13 +76,21 @@ static void activate(GtkApplication *app, gpointer user_data) {
         g_timeout_add_seconds(5, update_battery, battery_label);
     }
 
-    GtkWidget *power_save_toggle = gtk_toggle_button_new_with_label("Power Save: Off");
+    gboolean power_save_active = FALSE;
+    if (g_find_program_in_path("powerprofilesctl"))
+        power_save_active = get_power_save_active();
+    GtkWidget *power_save_toggle = gtk_toggle_button_new_with_label(
+        power_save_active ? "Power Save: On" : "Power Save: Off");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(power_save_toggle), power_save_active);
     g_signal_connect(power_save_toggle, "toggled", G_CALLBACK(on_power_save_toggled), NULL);
     gtk_widget_set_halign(power_save_toggle, GTK_ALIGN_CENTER);
     gtk_box_append(GTK_BOX(board), power_save_toggle);
 
     if (have_battery && has_charge_threshold()) {
-        GtkWidget *charge_limit_toggle = gtk_toggle_button_new_with_label("Charge Limit: Off");
+        gboolean charge_limit_active = (read_charge_threshold() == 80);
+        GtkWidget *charge_limit_toggle = gtk_toggle_button_new_with_label(
+            charge_limit_active ? "Charge Limit: 80%" : "Charge Limit: Off");
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(charge_limit_toggle), charge_limit_active);
         g_signal_connect(charge_limit_toggle, "toggled", G_CALLBACK(on_charge_limit_toggled), NULL);
         gtk_widget_set_halign(charge_limit_toggle, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(board), charge_limit_toggle);

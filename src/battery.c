@@ -81,3 +81,12 @@ void on_charge_limit_toggled(GtkToggleButton *toggle, gpointer user_data) {
 
     gtk_button_set_label(GTK_BUTTON(toggle), active ? "Charge Limit: 80%" : "Charge Limit: Off");
 }
+
+int read_charge_threshold(void) {
+    if (battery_path[0] == '\0') return 0;
+    char path[300];
+    snprintf(path, sizeof(path), "%s/charge_control_end_threshold", battery_path);
+    int val = 0;
+    if (!read_int_file(path, &val)) return 0;
+    return val;
+}
