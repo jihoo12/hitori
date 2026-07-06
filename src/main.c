@@ -6,6 +6,7 @@
 #include "power.h"
 #include "brightness.h"
 #include "volume.h"
+#include "suspend.h"
 #include "util.h"
 
 #define BOARD_SIZE 600
@@ -86,6 +87,11 @@ static void activate(GtkApplication *app, gpointer user_data) {
         gtk_widget_set_halign(charge_limit_toggle, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(board), charge_limit_toggle);
     }
+
+    GtkWidget *suspend_button = gtk_button_new_with_label("Suspend");
+    g_signal_connect(suspend_button, "clicked", G_CALLBACK(on_suspend_clicked), NULL);
+    gtk_widget_set_halign(suspend_button, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(board), suspend_button);
 
     char backlight_path[256] = {0};
     if (find_backlight(backlight_path, sizeof(backlight_path))) {
