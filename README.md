@@ -30,11 +30,18 @@ make
 
 ```
 ./hitori
+./hitori -c /path/to/config.ini
 ```
 
 ## Configuration
 
-Create `~/.config/hitori/config.ini` to customize the panel:
+By default hitori reads `~/.config/hitori/config.ini`. Use `-c` / `--config` to specify a different path:
+
+```
+hitori -c myconfig.ini
+```
+
+Example config:
 
 ```ini
 [widgets]
@@ -51,4 +58,8 @@ suspend=true
 ; Add custom command buttons (label=command)
 # Lock Screen=gtklock
 # Logout=systemctl --user exit
+
+[style]
+; Path to a custom CSS file (overrides built-in style)
+# css_path = /home/user/hitori-style.css
 ```

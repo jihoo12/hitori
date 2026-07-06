@@ -21,7 +21,7 @@ static void custom_button_entry_free(gpointer data) {
     g_free(entry);
 }
 
-HitoriConfig *config_load(void) {
+HitoriConfig *config_load(const char *config_path) {
     HitoriConfig *cfg = g_new0(HitoriConfig, 1);
 
     cfg->clock = TRUE;
@@ -31,19 +31,25 @@ HitoriConfig *config_load(void) {
     cfg->brightness = TRUE;
     cfg->volume = TRUE;
     cfg->suspend = TRUE;
+    cfg->css_path = NULL;
     cfg->custom_buttons = g_ptr_array_new_with_free_func(custom_button_entry_free);
 
-    char *config_dir = g_build_filename(g_get_user_config_dir(), "hitori", NULL);
-    char *config_path = g_build_filename(config_dir, "config.ini", NULL);
-    g_free(config_dir);
+    char *path = NULL;
+    if (config_path) {
+        path = g_strdup(config_path);
+    } else {
+        char *config_dir = g_build_filename(g_get_user_config_dir(), "hitori", NULL);
+        path = g_build_filename(config_dir, "config.ini", NULL);
+        g_free(config_dir);
+    }
 
     GKeyFile *kf = g_key_file_new();
-    if (!g_key_file_load_from_file(kf, config_path, G_KEY_FILE_NONE, NULL)) {
-        g_free(config_path);
+    if (!g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL)) {
+        g_free(path);
         g_key_file_free(kf);
         return cfg;
     }
-    g_free(config_path);
+    g_free(path);
 
     cfg->clock = get_bool_default(kf, "widgets", "clock", TRUE);
     cfg->battery = get_bool_default(kf, "widgets", "battery", TRUE);
@@ -52,6 +58,8 @@ HitoriConfig *config_load(void) {
     cfg->brightness = get_bool_default(kf, "widgets", "brightness", TRUE);
     cfg->volume = get_bool_default(kf, "widgets", "volume", TRUE);
     cfg->suspend = get_bool_default(kf, "widgets", "suspend", TRUE);
+
+    cfg->css_path = g_key_file_get_string(kf, "style", "css_path", NULL);
 
     gsize nkeys = 0;
     gchar **keys = g_key_file_get_keys(kf, "custom_buttons", &nkeys, NULL);
@@ -76,6 +84,7 @@ HitoriConfig *config_load(void) {
 
 void config_free(HitoriConfig *cfg) {
     if (!cfg) return;
+    g_free(cfg->css_path);
     g_ptr_array_unref(cfg->custom_buttons);
     g_free(cfg);
 }

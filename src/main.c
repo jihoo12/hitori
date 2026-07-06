@@ -13,13 +13,17 @@
 #define BOARD_SIZE 600
 #define BOARD_MARGIN 12
 
-static void load_css(void) {
+static void load_css(const char *css_path) {
     GtkCssProvider *provider = gtk_css_provider_new();
-    const char *css =
-        "window { background-color: rgba(30, 30, 30, 0.95); border-radius: 12px; }"
-        "box.panel-section { padding: 12px 16px; }"
-        "label.panel-clock { color: #ffffff; font-weight: bold; font-size: 16px; }";
-    gtk_css_provider_load_from_string(provider, css);
+    if (css_path) {
+        gtk_css_provider_load_from_path(provider, css_path);
+    } else {
+        const char *css =
+            "window { background-color: rgba(30, 30, 30, 0.95); border-radius: 12px; }"
+            "box.panel-section { padding: 12px 16px; }"
+            "label.panel-clock { color: #ffffff; font-weight: bold; font-size: 16px; }";
+        gtk_css_provider_load_from_string(provider, css);
+    }
     gtk_style_context_add_provider_for_display(
         gdk_display_get_default(),
         GTK_STYLE_PROVIDER(provider),
@@ -38,9 +42,9 @@ static void on_custom_button_clicked(GtkButton *button, gpointer user_data) {
 }
 
 static void activate(GtkApplication *app, gpointer user_data) {
-    (void)user_data;
-    load_css();
-    HitoriConfig *cfg = config_load();
+    const char *custom_path = (const char *)user_data;
+    HitoriConfig *cfg = config_load(custom_path);
+    load_css(cfg->css_path);
 
     GtkWidget *window = gtk_application_window_new(app);
 
@@ -187,11 +191,30 @@ static void activate(GtkApplication *app, gpointer user_data) {
 }
 
 int main(int argc, char *argv[]) {
+    gchar *custom_config = NULL;
+    GOptionEntry entries[] = {
+        { "config", 'c', 0, G_OPTION_ARG_STRING, &custom_config,
+          "Path to config file (default: ~/.config/hitori/config.ini)", "PATH" },
+        { NULL, 0, 0, 0, NULL, NULL, NULL }
+    };
+
+    GOptionContext *ctx = g_option_context_new("- control panel");
+    g_option_context_add_main_entries(ctx, entries, NULL);
+    GError *error = NULL;
+    if (!g_option_context_parse(ctx, &argc, &argv, &error)) {
+        g_print("hitori: %s\n", error->message);
+        g_error_free(error);
+        g_option_context_free(ctx);
+        return 1;
+    }
+    g_option_context_free(ctx);
+
     GtkApplication *app = gtk_application_new("com.example.gtk4layershelldemo",
                                                G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(activate), custom_config);
 
     int status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_free(custom_config);
     g_object_unref(app);
     return status;
 }

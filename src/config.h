@@ -15,8 +15,9 @@ typedef struct {
     gboolean brightness;
     gboolean volume;
     gboolean suspend;
+    char *css_path;
     GPtrArray *custom_buttons;
 } HitoriConfig;
 
-HitoriConfig *config_load(void);
+HitoriConfig *config_load(const char *config_path);
 void config_free(HitoriConfig *cfg);
