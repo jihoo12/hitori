@@ -2,7 +2,7 @@
 
 #include <gtk/gtk.h>
 
-extern char battery_path[256];
+extern char battery_path[300];
 
 gboolean find_battery(void);
 gboolean has_charge_threshold(void);

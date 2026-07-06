@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
+#include "config.h"
 #include "clock.h"
 #include "battery.h"
 #include "power.h"
@@ -26,9 +27,20 @@ static void load_css(void) {
     g_object_unref(provider);
 }
 
+static void on_custom_button_clicked(GtkButton *button, gpointer user_data) {
+    (void)user_data;
+    const char *command = g_object_get_data(G_OBJECT(button), "cmd");
+    GError *error = NULL;
+    if (!g_spawn_command_line_async(command, &error)) {
+        g_warning("custom button: %s", error->message);
+        g_error_free(error);
+    }
+}
+
 static void activate(GtkApplication *app, gpointer user_data) {
     (void)user_data;
     load_css();
+    HitoriConfig *cfg = config_load();
 
     GtkWidget *window = gtk_application_window_new(app);
 
@@ -60,15 +72,17 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_add_css_class(title_label, "panel-clock");
     gtk_box_append(GTK_BOX(board), title_label);
 
-    GtkWidget *clock_label = gtk_label_new("");
-    gtk_widget_add_css_class(clock_label, "panel-clock");
-    gtk_box_append(GTK_BOX(board), clock_label);
-    update_clock(clock_label);
-    g_timeout_add_seconds(1, update_clock, clock_label);
+    if (cfg->clock) {
+        GtkWidget *clock_label = gtk_label_new("");
+        gtk_widget_add_css_class(clock_label, "panel-clock");
+        gtk_box_append(GTK_BOX(board), clock_label);
+        update_clock(clock_label);
+        g_timeout_add_seconds(1, update_clock, clock_label);
+    }
 
     gboolean have_battery = find_battery();
 
-    if (have_battery) {
+    if (have_battery && cfg->battery) {
         GtkWidget *battery_label = gtk_label_new("");
         gtk_widget_add_css_class(battery_label, "panel-clock");
         gtk_box_append(GTK_BOX(board), battery_label);
@@ -76,17 +90,19 @@ static void activate(GtkApplication *app, gpointer user_data) {
         g_timeout_add_seconds(5, update_battery, battery_label);
     }
 
-    gboolean power_save_active = FALSE;
-    if (g_find_program_in_path("powerprofilesctl"))
-        power_save_active = get_power_save_active();
-    GtkWidget *power_save_toggle = gtk_toggle_button_new_with_label(
-        power_save_active ? "Power Save: On" : "Power Save: Off");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(power_save_toggle), power_save_active);
-    g_signal_connect(power_save_toggle, "toggled", G_CALLBACK(on_power_save_toggled), NULL);
-    gtk_widget_set_halign(power_save_toggle, GTK_ALIGN_CENTER);
-    gtk_box_append(GTK_BOX(board), power_save_toggle);
+    if (cfg->power_save) {
+        gboolean power_save_active = FALSE;
+        if (g_find_program_in_path("powerprofilesctl"))
+            power_save_active = get_power_save_active();
+        GtkWidget *power_save_toggle = gtk_toggle_button_new_with_label(
+            power_save_active ? "Power Save: On" : "Power Save: Off");
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(power_save_toggle), power_save_active);
+        g_signal_connect(power_save_toggle, "toggled", G_CALLBACK(on_power_save_toggled), NULL);
+        gtk_widget_set_halign(power_save_toggle, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(board), power_save_toggle);
+    }
 
-    if (have_battery && has_charge_threshold()) {
+    if (have_battery && has_charge_threshold() && cfg->charge_limit) {
         gboolean charge_limit_active = (read_charge_threshold() == 80);
         GtkWidget *charge_limit_toggle = gtk_toggle_button_new_with_label(
             charge_limit_active ? "Charge Limit: 80%" : "Charge Limit: Off");
@@ -96,39 +112,43 @@ static void activate(GtkApplication *app, gpointer user_data) {
         gtk_box_append(GTK_BOX(board), charge_limit_toggle);
     }
 
-    GtkWidget *suspend_button = gtk_button_new_with_label("Suspend");
-    g_signal_connect(suspend_button, "clicked", G_CALLBACK(on_suspend_clicked), NULL);
-    gtk_widget_set_halign(suspend_button, GTK_ALIGN_CENTER);
-    gtk_box_append(GTK_BOX(board), suspend_button);
-
-    char backlight_path[256] = {0};
-    if (find_backlight(backlight_path, sizeof(backlight_path))) {
-        char cur_file[300], max_file[300];
-        snprintf(cur_file, sizeof(cur_file), "%s/brightness", backlight_path);
-        snprintf(max_file, sizeof(max_file), "%s/max_brightness", backlight_path);
-
-        int cur = 0, max = 1;
-        read_int_file(cur_file, &cur);
-        read_int_file(max_file, &max);
-        int initial_percent = (max > 0) ? (cur * 100) / max : 50;
-
-        GtkWidget *brightness_label = gtk_label_new("Brightness");
-        gtk_widget_add_css_class(brightness_label, "panel-clock");
-        gtk_box_append(GTK_BOX(board), brightness_label);
-
-        GtkWidget *brightness_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
-        gtk_range_set_value(GTK_RANGE(brightness_scale), initial_percent);
-        gtk_scale_set_draw_value(GTK_SCALE(brightness_scale), TRUE);
-        gtk_widget_set_size_request(brightness_scale, 180, -1);
-        gtk_box_append(GTK_BOX(board), brightness_scale);
-
-        GtkWidget *brightness_apply = gtk_button_new_with_label("Apply Brightness");
-        g_signal_connect(brightness_apply, "clicked", G_CALLBACK(on_brightness_apply), brightness_scale);
-        gtk_widget_set_halign(brightness_apply, GTK_ALIGN_CENTER);
-        gtk_box_append(GTK_BOX(board), brightness_apply);
+    if (cfg->suspend) {
+        GtkWidget *suspend_button = gtk_button_new_with_label("Suspend");
+        g_signal_connect(suspend_button, "clicked", G_CALLBACK(on_suspend_clicked), NULL);
+        gtk_widget_set_halign(suspend_button, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(board), suspend_button);
     }
 
-    {
+    if (cfg->brightness) {
+        char backlight_path[256] = {0};
+        if (find_backlight(backlight_path, sizeof(backlight_path))) {
+            char cur_file[300], max_file[300];
+            snprintf(cur_file, sizeof(cur_file), "%s/brightness", backlight_path);
+            snprintf(max_file, sizeof(max_file), "%s/max_brightness", backlight_path);
+
+            int cur = 0, max = 1;
+            read_int_file(cur_file, &cur);
+            read_int_file(max_file, &max);
+            int initial_percent = (max > 0) ? (cur * 100) / max : 50;
+
+            GtkWidget *brightness_label = gtk_label_new("Brightness");
+            gtk_widget_add_css_class(brightness_label, "panel-clock");
+            gtk_box_append(GTK_BOX(board), brightness_label);
+
+            GtkWidget *brightness_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
+            gtk_range_set_value(GTK_RANGE(brightness_scale), initial_percent);
+            gtk_scale_set_draw_value(GTK_SCALE(brightness_scale), TRUE);
+            gtk_widget_set_size_request(brightness_scale, 180, -1);
+            gtk_box_append(GTK_BOX(board), brightness_scale);
+
+            GtkWidget *brightness_apply = gtk_button_new_with_label("Apply Brightness");
+            g_signal_connect(brightness_apply, "clicked", G_CALLBACK(on_brightness_apply), brightness_scale);
+            gtk_widget_set_halign(brightness_apply, GTK_ALIGN_CENTER);
+            gtk_box_append(GTK_BOX(board), brightness_apply);
+        }
+    }
+
+    if (cfg->volume) {
         int initial_volume = 50;
         gboolean have_wpctl = (g_find_program_in_path("wpctl") != NULL);
 
@@ -153,6 +173,16 @@ static void activate(GtkApplication *app, gpointer user_data) {
         gtk_box_append(GTK_BOX(board), volume_scale);
     }
 
+    for (guint i = 0; i < cfg->custom_buttons->len; i++) {
+        CustomButtonEntry *entry = g_ptr_array_index(cfg->custom_buttons, i);
+        GtkWidget *btn = gtk_button_new_with_label(entry->label);
+        g_object_set_data_full(G_OBJECT(btn), "cmd", g_strdup(entry->command), g_free);
+        g_signal_connect(btn, "clicked", G_CALLBACK(on_custom_button_clicked), NULL);
+        gtk_widget_set_halign(btn, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(board), btn);
+    }
+
+    config_free(cfg);
     gtk_window_present(GTK_WINDOW(window));
 }
 

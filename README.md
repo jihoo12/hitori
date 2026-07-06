@@ -31,3 +31,24 @@ make
 ```
 ./hitori
 ```
+
+## Configuration
+
+Create `~/.config/hitori/config.ini` to customize the panel:
+
+```ini
+[widgets]
+; Set any of these to false to hide the widget
+clock=true
+battery=true
+power_save=true
+charge_limit=true
+brightness=true
+volume=true
+suspend=true
+
+[custom_buttons]
+; Add custom command buttons (label=command)
+# Lock Screen=gtklock
+# Logout=systemctl --user exit
+```

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-char battery_path[256] = {0};
+char battery_path[300] = {0};
 
 gboolean find_battery(void) {
     const char *base = "/sys/class/power_supply";
