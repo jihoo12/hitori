@@ -120,14 +120,12 @@ static void activate(GtkApplication *app, gpointer user_data) {
         gtk_range_set_value(GTK_RANGE(brightness_scale), initial_percent);
         gtk_scale_set_draw_value(GTK_SCALE(brightness_scale), TRUE);
         gtk_widget_set_size_request(brightness_scale, 180, -1);
-        g_signal_connect(brightness_scale, "value-changed", G_CALLBACK(on_brightness_changed), NULL);
-
-        if (!g_find_program_in_path("brightnessctl")) {
-            gtk_widget_set_sensitive(brightness_scale, FALSE);
-            gtk_widget_set_tooltip_text(brightness_scale, "brightnessctl not found in PATH");
-        }
-
         gtk_box_append(GTK_BOX(board), brightness_scale);
+
+        GtkWidget *brightness_apply = gtk_button_new_with_label("Apply Brightness");
+        g_signal_connect(brightness_apply, "clicked", G_CALLBACK(on_brightness_apply), brightness_scale);
+        gtk_widget_set_halign(brightness_apply, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(board), brightness_apply);
     }
 
     {

@@ -1,32 +1,34 @@
 #include "brightness.h"
+#include "util.h"
 #include <dirent.h>
 #include <string.h>
 #include <stdio.h>
 
-static guint brightness_debounce_id = 0;
+static char backlight_path[256] = {0};
+static int max_brightness = 1;
 
-static gboolean apply_brightness(gpointer user_data) {
+void on_brightness_apply(GtkButton *button, gpointer user_data) {
+    (void)button;
     GtkRange *range = GTK_RANGE(user_data);
-    int value = (int)gtk_range_get_value(range);
+    int percent = (int)gtk_range_get_value(range);
 
-    char cmd[128];
-    snprintf(cmd, sizeof(cmd), "brightnessctl set %d%%", value);
+    if (backlight_path[0] == '\0') return;
+
+    char brightness_file[300];
+    snprintf(brightness_file, sizeof(brightness_file), "%s/brightness", backlight_path);
+
+    int value = (percent * max_brightness) / 100;
+    if (value < 0) value = 0;
+    if (value > max_brightness) value = max_brightness;
+
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), "pkexec sh -c \"echo %d > '%s'\"", value, brightness_file);
 
     GError *error = NULL;
     if (!g_spawn_command_line_async(cmd, &error)) {
-        g_warning("brightness slider: failed to run '%s': %s", cmd, error->message);
+        g_warning("brightness apply: failed to run '%s': %s", cmd, error->message);
         g_error_free(error);
     }
-
-    brightness_debounce_id = 0;
-    return G_SOURCE_REMOVE;
-}
-
-void on_brightness_changed(GtkRange *range, gpointer user_data) {
-    (void)user_data;
-    if (brightness_debounce_id != 0)
-        g_source_remove(brightness_debounce_id);
-    brightness_debounce_id = g_timeout_add(150, apply_brightness, range);
 }
 
 gboolean find_backlight(char *out, size_t len) {
@@ -39,6 +41,13 @@ gboolean find_backlight(char *out, size_t len) {
     while ((entry = readdir(d)) != NULL) {
         if (entry->d_name[0] == '.') continue;
         snprintf(out, len, "%s/%s", base, entry->d_name);
+        strncpy(backlight_path, out, sizeof(backlight_path) - 1);
+        backlight_path[sizeof(backlight_path) - 1] = '\0';
+        char max_file[300];
+        snprintf(max_file, sizeof(max_file), "%s/max_brightness", backlight_path);
+        max_brightness = 1;
+        read_int_file(max_file, &max_brightness);
+        if (max_brightness <= 0) max_brightness = 1;
         found = TRUE;
         break;
     }
