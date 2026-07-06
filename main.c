@@ -11,6 +11,42 @@
  * Left empty on machines with no battery (desktops). */
 static char battery_path[256] = {0};
 
+/* Which power-management tool is available on this system, detected
+ * once at startup by checking $PATH. */
+typedef enum {
+    POWER_TOOL_NONE,
+    POWER_TOOL_POWERPROFILESCTL,
+    POWER_TOOL_TLP,
+} PowerTool;
+
+static PowerTool power_tool = POWER_TOOL_NONE;
+
+/* Prefer power-profiles-daemon if both are present, since it's the
+ * more modern desktop-integrated option; fall back to TLP; otherwise
+ * disable the toggle entirely. */
+static PowerTool detect_power_tool(void) {
+    char *path;
+
+    if ((path = g_find_program_in_path("powerprofilesctl")) != NULL) {
+        g_free(path);
+        return POWER_TOOL_POWERPROFILESCTL;
+    }
+    if ((path = g_find_program_in_path("tlp")) != NULL) {
+        g_free(path);
+        return POWER_TOOL_TLP;
+    }
+    return POWER_TOOL_NONE;
+}
+
+static void on_button_clicked(GtkWidget *button, gpointer user_data) {
+    static int count = 0;
+    count++;
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "click count: %d", count);
+    gtk_button_set_label(GTK_BUTTON(button), buf);
+}
+
 /* Scan /sys/class/power_supply for the first BAT* entry.
  * Returns TRUE and fills battery_path if one is found. */
 static gboolean find_battery(void) {
@@ -79,6 +115,50 @@ static gboolean update_battery(gpointer user_data) {
     return G_SOURCE_CONTINUE;
 }
 
+/* Timer callback: refresh the clock label every second. */
+static gboolean update_clock(gpointer user_data) {
+    GtkWidget *label = GTK_WIDGET(user_data);
+    GDateTime *now = g_date_time_new_now_local();
+    char *text = g_date_time_format(now, "%H:%M:%S");
+    gtk_label_set_text(GTK_LABEL(label), text);
+    g_free(text);
+    g_date_time_unref(now);
+    return G_SOURCE_CONTINUE;
+}
+
+/* Toggled handler: flip the system power profile using whichever tool
+ * detect_power_tool() found. TLP's ac/bat commands (and cpufreq
+ * governor switches, if you add that as a third option) typically
+ * need root, so on some systems this may need a polkit rule or
+ * passwordless sudoers entry to actually take effect from a regular
+ * user session. */
+static void on_power_save_toggled(GtkToggleButton *toggle, gpointer user_data) {
+    gboolean active = gtk_toggle_button_get_active(toggle);
+    const char *cmd = NULL;
+
+    switch (power_tool) {
+        case POWER_TOOL_POWERPROFILESCTL:
+            cmd = active ? "powerprofilesctl set power-saver"
+                         : "powerprofilesctl set balanced";
+            break;
+        case POWER_TOOL_TLP:
+            cmd = active ? "tlp bat" : "tlp ac";
+            break;
+        case POWER_TOOL_NONE:
+        default:
+            g_warning("power save toggle: no supported power tool found");
+            return;
+    }
+
+    GError *error = NULL;
+    if (!g_spawn_command_line_async(cmd, &error)) {
+        g_warning("power save toggle: failed to run '%s': %s", cmd, error->message);
+        g_error_free(error);
+    }
+
+    gtk_button_set_label(GTK_BUTTON(toggle), active ? "Power Save: On" : "Power Save: Off");
+}
+
 static void load_css(void) {
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
@@ -133,6 +213,12 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_add_css_class(title_label, "panel-clock");
     gtk_box_append(GTK_BOX(board), title_label);
 
+    GtkWidget *clock_label = gtk_label_new("");
+    gtk_widget_add_css_class(clock_label, "panel-clock");
+    gtk_box_append(GTK_BOX(board), clock_label);
+    update_clock(clock_label);
+    g_timeout_add_seconds(1, update_clock, clock_label);
+
     /* Battery indicator: only shown if a battery is actually present. */
     if (find_battery()) {
         GtkWidget *battery_label = gtk_label_new("");
@@ -141,6 +227,34 @@ static void activate(GtkApplication *app, gpointer user_data) {
         update_battery(battery_label);
         g_timeout_add_seconds(5, update_battery, battery_label);
     }
+
+    GtkWidget *power_save_toggle = gtk_toggle_button_new_with_label("Power Save: Off");
+    g_signal_connect(power_save_toggle, "toggled", G_CALLBACK(on_power_save_toggled), NULL);
+    gtk_widget_set_halign(power_save_toggle, GTK_ALIGN_CENTER);
+
+    power_tool = detect_power_tool();
+    switch (power_tool) {
+        case POWER_TOOL_POWERPROFILESCTL:
+            gtk_widget_set_tooltip_text(power_save_toggle, "Using powerprofilesctl");
+            break;
+        case POWER_TOOL_TLP:
+            gtk_widget_set_tooltip_text(power_save_toggle, "Using TLP");
+            break;
+        case POWER_TOOL_NONE:
+        default:
+            gtk_widget_set_sensitive(power_save_toggle, FALSE);
+            gtk_button_set_label(GTK_BUTTON(power_save_toggle), "Power Save: N/A");
+            gtk_widget_set_tooltip_text(power_save_toggle,
+                "Neither powerprofilesctl nor tlp found in PATH");
+            break;
+    }
+
+    gtk_box_append(GTK_BOX(board), power_save_toggle);
+
+    GtkWidget *button = gtk_button_new_with_label("click me");
+    g_signal_connect(button, "clicked", G_CALLBACK(on_button_clicked), NULL);
+    gtk_widget_set_halign(button, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(board), button);
 
     gtk_window_present(GTK_WINDOW(window));
 }
