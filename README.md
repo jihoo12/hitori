@@ -4,13 +4,16 @@ A minimal Wayland control panel using GTK4 Layer Shell.
 
 ## Features
 
-- Clock display
-- Battery status (capacity, charging icon)
-- Power save toggle (`powerprofilesctl`)
-- Charging limit toggle (80% threshold)
-- Brightness slider with Apply button
-- Volume slider (`wpctl`)
-- Suspend button
+- **Launch entry** — type a command and press Enter to run it
+- **Clock** — live date/time display
+- **Battery** — capacity and charging icon
+- **Power save** — toggle between `power-saver` and `balanced` via `powerprofilesctl`
+- **Charge limit** — toggle 80% battery charge threshold
+- **Brightness** — slider with Apply button (uses `pkexec`)
+- **Volume** — live slider via `wpctl`
+- **Suspend** — one-click system suspend
+- **Custom buttons** — user-defined command buttons from config
+- **Escape** — press Escape to close the panel
 
 ## Dependencies
 
@@ -63,3 +66,5 @@ suspend=true
 ; Path to a custom CSS file (overrides built-in style)
 # css_path = /home/user/hitori-style.css
 ```
+
+Press **Escape** to dismiss the panel. The **launch entry** at the top accepts any command and closes the panel on Enter.
