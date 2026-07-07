@@ -48,7 +48,7 @@ Example config:
 
 ```ini
 [widgets]
-; Set any of these to false to hide the widget
+# Set any of these to false to hide the widget
 clock=true
 battery=true
 power_save=true
@@ -58,12 +58,13 @@ volume=true
 suspend=true
 
 [custom_buttons]
-; Add custom command buttons (label=command)
+# Add custom command buttons (label=command)
 # Lock Screen=gtklock
 # Logout=systemctl --user exit
 
 [style]
-; Path to a custom CSS file (overrides built-in style)
+# Path to a custom CSS file (overrides built-in style)
+# See example-style.css in the repo for a full reference.
 # css_path = /home/user/hitori-style.css
 ```
 

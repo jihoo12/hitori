@@ -1,0 +1,144 @@
+/* Example hitori CSS — Catppuccin Mocha with accent-colored buttons */
+
+window {
+  background-color: rgba(30, 30, 46, 0.94);
+  border-radius: 14px;
+  min-width: 260px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+window.background {
+  background-color: rgba(30, 30, 46, 0.94);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+}
+
+box.panel-section {
+  padding: 14px 18px;
+}
+
+label.panel-clock {
+  color: #cdd6f4;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+label.section-label {
+  color: #585b70;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+entry {
+  background-color: #313244;
+  color: #cdd6f4;
+  border-radius: 8px;
+  border: 1px solid #45475a;
+  padding: 9px 12px;
+  font-size: 14px;
+  caret-color: #f5e0dc;
+  min-height: 18px;
+}
+
+entry:focus {
+  border-color: #b4befe;
+  background-color: #45475a;
+}
+
+button {
+  background-color: #89b4fa;
+  color: #1e1e2e;
+  border-radius: 8px;
+  border: none;
+  padding: 8px 16px;
+  font-size: 13px;
+  min-width: 140px;
+  font-weight: 700;
+}
+
+button:hover {
+  background-color: #9fc3fc;
+}
+
+button:active {
+  background-color: #74a5f8;
+}
+
+button.danger-button {
+  background-color: #f38ba8;
+  color: #1e1e2e;
+}
+
+button.danger-button:hover {
+  background-color: #f5a2ba;
+}
+
+button.danger-button:active {
+  background-color: #f17496;
+}
+
+togglebutton {
+  background-color: #585b70;
+  color: #cdd6f4;
+  border-radius: 8px;
+  border: 1px solid #6c7086;
+  padding: 8px 16px;
+  font-size: 13px;
+  min-width: 140px;
+  font-weight: 600;
+}
+
+togglebutton:hover {
+  background-color: #6c7086;
+}
+
+togglebutton:checked {
+  background-color: #a6e3a1;
+  color: #1e1e2e;
+  border: none;
+  font-weight: 700;
+}
+
+togglebutton:checked:hover {
+  background-color: #b8eab4;
+}
+
+scale {
+  margin: 3px 0;
+}
+
+scale trough {
+  background-color: #313244;
+  border-radius: 6px;
+  min-height: 6px;
+}
+
+scale highlight {
+  background-color: #89b4fa;
+  border-radius: 6px;
+}
+
+scale slider {
+  background-color: #cdd6f4;
+  border-radius: 50%;
+  min-width: 14px;
+  min-height: 14px;
+  margin: -5px;
+}
+
+scale value {
+  color: #585b70;
+  font-size: 11px;
+}
+
+separator {
+  background-color: #313244;
+  margin: 3px 0;
+  min-height: 1px;
+}
