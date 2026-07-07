@@ -31,6 +31,7 @@ HitoriConfig *config_load(const char *config_path) {
     cfg->brightness = TRUE;
     cfg->volume = TRUE;
     cfg->suspend = TRUE;
+    cfg->poweroff = TRUE;
     cfg->css_path = NULL;
     cfg->custom_buttons = g_ptr_array_new_with_free_func(custom_button_entry_free);
 
@@ -58,6 +59,7 @@ HitoriConfig *config_load(const char *config_path) {
     cfg->brightness = get_bool_default(kf, "widgets", "brightness", TRUE);
     cfg->volume = get_bool_default(kf, "widgets", "volume", TRUE);
     cfg->suspend = get_bool_default(kf, "widgets", "suspend", TRUE);
+    cfg->poweroff = get_bool_default(kf, "widgets", "poweroff", TRUE);
 
     cfg->css_path = g_key_file_get_string(kf, "style", "css_path", NULL);
 

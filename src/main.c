@@ -8,6 +8,7 @@
 #include "brightness.h"
 #include "volume.h"
 #include "suspend.h"
+#include "poweroff.h"
 #include "util.h"
 
 #define BOARD_SIZE 600
@@ -197,6 +198,14 @@ static void activate(GtkApplication *app, gpointer user_data) {
         g_signal_connect(suspend_button, "clicked", G_CALLBACK(on_suspend_clicked), NULL);
         gtk_widget_set_halign(suspend_button, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(board), suspend_button);
+    }
+
+    if (cfg->poweroff) {
+        GtkWidget *poweroff_button = gtk_button_new_with_label("Poweroff");
+        gtk_widget_add_css_class(poweroff_button, "danger-button");
+        g_signal_connect(poweroff_button, "clicked", G_CALLBACK(on_poweroff_clicked), NULL);
+        gtk_widget_set_halign(poweroff_button, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(board), poweroff_button);
     }
 
     if (cfg->brightness) {

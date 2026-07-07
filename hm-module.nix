@@ -15,6 +15,7 @@ let
         brightness = cfg.widgets.brightness;
         volume = cfg.widgets.volume;
         suspend = cfg.widgets.suspend;
+        poweroff = cfg.widgets.poweroff;
       };
       custom_buttons = cfg.customButtons;
     }
@@ -63,6 +64,11 @@ in {
         type = types.bool;
         default = true;
         description = "Show the suspend button.";
+      };
+      poweroff = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Show the poweroff button.";
       };
     };
 

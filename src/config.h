@@ -15,6 +15,7 @@ typedef struct {
     gboolean brightness;
     gboolean volume;
     gboolean suspend;
+    gboolean poweroff;
     char *css_path;
     GPtrArray *custom_buttons;
 } HitoriConfig;

@@ -12,6 +12,7 @@ A minimal Wayland control panel using GTK4 Layer Shell.
 - **Brightness** — slider with Apply button (uses `pkexec`)
 - **Volume** — live slider via `wpctl`
 - **Suspend** — one-click system suspend
+- **Poweroff** — one-click system poweroff
 - **Custom buttons** — user-defined command buttons from config
 - **Escape** — press Escape to close the panel
 
@@ -21,7 +22,7 @@ A minimal Wayland control panel using GTK4 Layer Shell.
 - `powerprofilesctl` (optional — power save)
 - `pkexec` (brightness, charge limit)
 - `wpctl` / `wireplumber` (volume)
-- `systemd` (suspend)
+- `systemd` (suspend, poweroff)
 
 ## Build
 
