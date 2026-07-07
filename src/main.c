@@ -13,15 +13,70 @@
 #define BOARD_SIZE 600
 #define BOARD_MARGIN 12
 
+static gboolean on_key_pressed(GtkEventControllerKey *controller, guint keyval,
+                               guint keycode, GdkModifierType state, gpointer user_data) {
+    (void)keycode;
+    (void)state;
+    (void)user_data;
+    if (keyval == GDK_KEY_Escape) {
+        GtkWidget *window = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
+        GtkApplication *app = gtk_window_get_application(GTK_WINDOW(window));
+        if (app) g_application_quit(G_APPLICATION(app));
+        return GDK_EVENT_STOP;
+    }
+    return GDK_EVENT_PROPAGATE;
+}
+
 static void load_css(const char *css_path) {
     GtkCssProvider *provider = gtk_css_provider_new();
     if (css_path) {
         gtk_css_provider_load_from_path(provider, css_path);
     } else {
         const char *css =
-            "window { background-color: rgba(30, 30, 30, 0.95); border-radius: 12px; }"
-            "box.panel-section { padding: 12px 16px; }"
-            "label.panel-clock { color: #ffffff; font-weight: bold; font-size: 16px; }";
+            "@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } }"
+            "window { background-color: rgba(25, 25, 30, 0.92); border-radius: 14px; "
+            "  min-width: 260px; animation: fadeIn 0.15s ease-out; }"
+            "window.background { background-color: rgba(25, 25, 30, 0.92); }"
+            "box.panel-section { padding: 14px 18px; }"
+            "label.panel-clock { color: #ffffff; font-weight: 600; font-size: 15px; }"
+            "label.section-label { color: #888; font-size: 10px; font-weight: 700; "
+            "  letter-spacing: 1.2px; margin-top: 6px; margin-bottom: 2px; }"
+            "entry { background-color: rgba(255, 255, 255, 0.07); color: #ffffff; "
+            "  border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); "
+            "  padding: 9px 12px; font-size: 14px; caret-color: #ffffff; "
+            "  min-height: 18px; }"
+            "entry:focus { border-color: rgba(255, 255, 255, 0.25); "
+            "  background-color: rgba(255, 255, 255, 0.11); }"
+            "entry:focus-within { border-color: rgba(255, 255, 255, 0.25); "
+            "  background-color: rgba(255, 255, 255, 0.11); }"
+            "entry:focus-visible { border-color: rgba(255, 255, 255, 0.25); "
+            "  background-color: rgba(255, 255, 255, 0.11); }"
+            "button { background-color: rgba(255, 255, 255, 0.07); color: #ffffff; "
+            "  border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); "
+            "  padding: 8px 16px; font-size: 13px; min-width: 140px; "
+            "  transition: background-color 0.15s; }"
+            "button:hover { background-color: rgba(255, 255, 255, 0.14); }"
+            "button:active { background-color: rgba(255, 255, 255, 0.2); }"
+            "button.danger-button { border-color: rgba(220, 80, 80, 0.3); color: #f0a0a0; }"
+            "button.danger-button:hover { background-color: rgba(220, 80, 80, 0.15); "
+            "  border-color: rgba(220, 80, 80, 0.4); }"
+            "togglebutton { background-color: rgba(255, 255, 255, 0.07); color: #ffffff; "
+            "  border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); "
+            "  padding: 8px 16px; font-size: 13px; min-width: 140px; "
+            "  transition: background-color 0.15s; }"
+            "togglebutton:hover { background-color: rgba(255, 255, 255, 0.14); }"
+            "togglebutton:checked { background-color: rgba(100, 200, 100, 0.2); "
+            "  border-color: rgba(100, 200, 100, 0.35); color: #a0e0a0; }"
+            "scale { margin: 3px 0; }"
+            "scale trough { background-color: rgba(255, 255, 255, 0.08); "
+            "  border-radius: 6px; min-height: 6px; }"
+            "scale highlight { background-color: rgba(255, 255, 255, 0.4); "
+            "  border-radius: 6px; }"
+            "scale slider { background-color: #ffffff; border-radius: 50%; "
+            "  min-width: 14px; min-height: 14px; margin: -5px; }"
+            "scale value { color: #888; font-size: 11px; }"
+            "separator { background-color: rgba(255, 255, 255, 0.05); "
+            "  margin: 3px 0; min-height: 1px; }";
         gtk_css_provider_load_from_string(provider, css);
     }
     gtk_style_context_add_provider_for_display(
@@ -29,6 +84,21 @@ static void load_css(const char *css_path) {
         GTK_STYLE_PROVIDER(provider),
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(provider);
+}
+
+static void on_launch_entry_activate(GtkEntry *entry, gpointer user_data) {
+    GtkWidget *window = (GtkWidget *)user_data;
+    const char *text = gtk_entry_buffer_get_text(gtk_entry_get_buffer(entry));
+    if (text[0] == '\0') return;
+
+    GError *error = NULL;
+    if (!g_spawn_command_line_async(text, &error)) {
+        g_warning("launch: %s", error->message);
+        g_error_free(error);
+        return;
+    }
+    GtkApplication *app = gtk_window_get_application(GTK_WINDOW(window));
+    if (app) g_application_quit(G_APPLICATION(app));
 }
 
 static void on_custom_button_clicked(GtkButton *button, gpointer user_data) {
@@ -60,7 +130,11 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
 
-    gtk_layer_set_keyboard_mode(GTK_WINDOW(window), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
+    gtk_layer_set_keyboard_mode(GTK_WINDOW(window), GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND);
+
+    GtkEventController *key_controller = gtk_event_controller_key_new();
+    g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_key_pressed), NULL);
+    gtk_widget_add_controller(window, key_controller);
 
     gtk_widget_set_size_request(window, BOARD_SIZE, BOARD_SIZE);
 
@@ -76,12 +150,20 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_add_css_class(title_label, "panel-clock");
     gtk_box_append(GTK_BOX(board), title_label);
 
+    GtkWidget *launch_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(launch_entry), "launch program...");
+    gtk_widget_set_hexpand(launch_entry, TRUE);
+    g_signal_connect(launch_entry, "activate", G_CALLBACK(on_launch_entry_activate), window);
+    gtk_box_append(GTK_BOX(board), launch_entry);
+
+    GtkWidget *sep1 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_box_append(GTK_BOX(board), sep1);
+
     if (cfg->clock) {
         GtkWidget *clock_label = gtk_label_new("");
         gtk_widget_add_css_class(clock_label, "panel-clock");
         gtk_box_append(GTK_BOX(board), clock_label);
         update_clock(clock_label);
-        g_timeout_add_seconds(1, update_clock, clock_label);
     }
 
     gboolean have_battery = find_battery();
@@ -91,7 +173,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
         gtk_widget_add_css_class(battery_label, "panel-clock");
         gtk_box_append(GTK_BOX(board), battery_label);
         update_battery(battery_label);
-        g_timeout_add_seconds(5, update_battery, battery_label);
     }
 
     if (cfg->power_save) {
@@ -118,6 +199,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     if (cfg->suspend) {
         GtkWidget *suspend_button = gtk_button_new_with_label("Suspend");
+        gtk_widget_add_css_class(suspend_button, "danger-button");
         g_signal_connect(suspend_button, "clicked", G_CALLBACK(on_suspend_clicked), NULL);
         gtk_widget_set_halign(suspend_button, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(board), suspend_button);
@@ -135,8 +217,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
             read_int_file(max_file, &max);
             int initial_percent = (max > 0) ? (cur * 100) / max : 50;
 
-            GtkWidget *brightness_label = gtk_label_new("Brightness");
-            gtk_widget_add_css_class(brightness_label, "panel-clock");
+            GtkWidget *brightness_sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+            gtk_box_append(GTK_BOX(board), brightness_sep);
+            GtkWidget *brightness_label = gtk_label_new("BRIGHTNESS");
+            gtk_widget_add_css_class(brightness_label, "section-label");
             gtk_box_append(GTK_BOX(board), brightness_label);
 
             GtkWidget *brightness_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
@@ -156,8 +240,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
         int initial_volume = 50;
         gboolean have_wpctl = (g_find_program_in_path("wpctl") != NULL);
 
-        GtkWidget *volume_label = gtk_label_new("Volume");
-        gtk_widget_add_css_class(volume_label, "panel-clock");
+        GtkWidget *volume_sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+        gtk_box_append(GTK_BOX(board), volume_sep);
+        GtkWidget *volume_label = gtk_label_new("VOLUME");
+        gtk_widget_add_css_class(volume_label, "section-label");
         gtk_box_append(GTK_BOX(board), volume_label);
 
         GtkWidget *volume_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
@@ -188,6 +274,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     config_free(cfg);
     gtk_window_present(GTK_WINDOW(window));
+    gtk_widget_grab_focus(launch_entry);
 }
 
 int main(int argc, char *argv[]) {
