@@ -94,6 +94,17 @@ static void on_launcher_clicked(GtkButton *button, gpointer user_data) {
     if (app) g_application_quit(G_APPLICATION(app));
 }
 
+static void on_launch_command(GtkEntry *entry, gpointer user_data) {
+    (void)user_data;
+    const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
+    if (text == NULL || text[0] == '\0') return;
+    GError *error = NULL;
+    if (!g_spawn_command_line_async(text, &error)) {
+        g_warning("launch: %s", error->message);
+        g_error_free(error);
+    }
+}
+
 static void on_custom_button_clicked(GtkButton *button, gpointer user_data) {
     (void)user_data;
     const char *command = g_object_get_data(G_OBJECT(button), "cmd");
@@ -143,10 +154,23 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_add_css_class(title_label, "panel-clock");
     gtk_box_append(GTK_BOX(board), title_label);
 
+    GtkWidget *launch_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(launch_entry), "Type a command...");
+    g_signal_connect(launch_entry, "activate", G_CALLBACK(on_launch_command), NULL);
+    gtk_box_append(GTK_BOX(board), launch_entry);
+
+    GtkWidget *launch_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_halign(launch_row, GTK_ALIGN_CENTER);
+
+    GtkWidget *launch_button = gtk_button_new_with_label("Launch");
+    g_signal_connect_swapped(launch_button, "clicked", G_CALLBACK(on_launch_command), launch_entry);
+    gtk_box_append(GTK_BOX(launch_row), launch_button);
+
     GtkWidget *launcher_button = gtk_button_new_with_label("Open Launcher");
     g_signal_connect(launcher_button, "clicked", G_CALLBACK(on_launcher_clicked), window);
-    gtk_widget_set_halign(launcher_button, GTK_ALIGN_CENTER);
-    gtk_box_append(GTK_BOX(board), launcher_button);
+    gtk_box_append(GTK_BOX(launch_row), launcher_button);
+
+    gtk_box_append(GTK_BOX(board), launch_row);
 
     GtkWidget *sep1 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_box_append(GTK_BOX(board), sep1);
