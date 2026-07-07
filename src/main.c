@@ -34,9 +34,8 @@ static void load_css(const char *css_path) {
         gtk_css_provider_load_from_path(provider, css_path);
     } else {
         const char *css =
-            "@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } }"
             "window { background-color: rgba(30, 30, 46, 0.94); border-radius: 14px; "
-            "  min-width: 260px; animation: fadeIn 0.15s ease-out; }"
+            "  min-width: 260px; }"
             "window.background { background-color: rgba(30, 30, 46, 0.94); }"
             "box.panel-section { padding: 14px 18px; }"
             "label.panel-clock { color: #cdd6f4; font-weight: 600; font-size: 15px; }"
@@ -95,14 +94,17 @@ static void on_launcher_clicked(GtkButton *button, gpointer user_data) {
 }
 
 static void on_launch_command(GtkEntry *entry, gpointer user_data) {
-    (void)user_data;
     const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
     if (text == NULL || text[0] == '\0') return;
+    GtkWidget *window = (GtkWidget *)user_data;
     GError *error = NULL;
     if (!g_spawn_command_line_async(text, &error)) {
         g_warning("launch: %s", error->message);
         g_error_free(error);
+        return;
     }
+    GtkApplication *app = gtk_window_get_application(GTK_WINDOW(window));
+    if (app) g_application_quit(G_APPLICATION(app));
 }
 
 static void on_custom_button_clicked(GtkButton *button, gpointer user_data) {
@@ -126,11 +128,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_TOP);
 
-    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, TRUE);
-    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
-
-    gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, BOARD_MARGIN);
-    gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, BOARD_MARGIN);
+    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, FALSE);
+    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, FALSE);
+    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, FALSE);
+    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, FALSE);
 
     gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
 
@@ -156,21 +157,13 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     GtkWidget *launch_entry = gtk_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(launch_entry), "Type a command...");
-    g_signal_connect(launch_entry, "activate", G_CALLBACK(on_launch_command), NULL);
+    g_signal_connect(launch_entry, "activate", G_CALLBACK(on_launch_command), window);
     gtk_box_append(GTK_BOX(board), launch_entry);
-
-    GtkWidget *launch_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_halign(launch_row, GTK_ALIGN_CENTER);
-
-    GtkWidget *launch_button = gtk_button_new_with_label("Launch");
-    g_signal_connect_swapped(launch_button, "clicked", G_CALLBACK(on_launch_command), launch_entry);
-    gtk_box_append(GTK_BOX(launch_row), launch_button);
 
     GtkWidget *launcher_button = gtk_button_new_with_label("Open Launcher");
     g_signal_connect(launcher_button, "clicked", G_CALLBACK(on_launcher_clicked), window);
-    gtk_box_append(GTK_BOX(launch_row), launcher_button);
-
-    gtk_box_append(GTK_BOX(board), launch_row);
+    gtk_widget_set_halign(launcher_button, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(board), launcher_button);
 
     GtkWidget *sep1 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_box_append(GTK_BOX(board), sep1);
