@@ -81,14 +81,12 @@ static void load_css(const char *css_path) {
     g_object_unref(provider);
 }
 
-static void on_launch_entry_activate(GtkEntry *entry, gpointer user_data) {
+static void on_launcher_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
     GtkWidget *window = (GtkWidget *)user_data;
-    const char *text = gtk_entry_buffer_get_text(gtk_entry_get_buffer(entry));
-    if (text[0] == '\0') return;
-
     GError *error = NULL;
-    if (!g_spawn_command_line_async(text, &error)) {
-        g_warning("launch: %s", error->message);
+    if (!g_spawn_command_line_async("hitori-launcher", &error)) {
+        g_warning("launch hitori-launcher: %s", error->message);
         g_error_free(error);
         return;
     }
@@ -145,11 +143,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_add_css_class(title_label, "panel-clock");
     gtk_box_append(GTK_BOX(board), title_label);
 
-    GtkWidget *launch_entry = gtk_entry_new();
-    gtk_entry_set_placeholder_text(GTK_ENTRY(launch_entry), "launch program...");
-    gtk_widget_set_hexpand(launch_entry, TRUE);
-    g_signal_connect(launch_entry, "activate", G_CALLBACK(on_launch_entry_activate), window);
-    gtk_box_append(GTK_BOX(board), launch_entry);
+    GtkWidget *launcher_button = gtk_button_new_with_label("Open Launcher");
+    g_signal_connect(launcher_button, "clicked", G_CALLBACK(on_launcher_clicked), window);
+    gtk_widget_set_halign(launcher_button, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(board), launcher_button);
 
     GtkWidget *sep1 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_box_append(GTK_BOX(board), sep1);
@@ -277,7 +274,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     config_free(cfg);
     gtk_window_present(GTK_WINDOW(window));
-    gtk_widget_grab_focus(launch_entry);
 }
 
 int main(int argc, char *argv[]) {
